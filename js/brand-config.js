@@ -20,15 +20,7 @@ window.BRAND_DEFAULTS = {
   pixBank: '',
   ifoodUrl: '',
   logo: '',
-  marqueeItems: [
-    'Poc Poc Gourmet',
-    'Ninho Cremoso',
-    'Nutella',
-    'Ovomaltine',
-    'Sequinhas',
-    'Caramelizada',
-    'A pipoca gourmet de Divinópolis!',
-  ],
+  marqueeItems: [],
 };
 
 window.SITE_URL = window.BRAND_DEFAULTS.siteUrl;

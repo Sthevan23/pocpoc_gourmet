@@ -872,9 +872,7 @@ p {
 
 /* frontend/src/presentation/components/MarqueeBanner/MarqueeBanner.css */
 .marquee {
-  width: 100%;
-  padding-block: 0.35rem;
-  overflow: hidden;
+  display: none !important;
 }
 
 .marquee__scroller {
