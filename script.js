@@ -237,13 +237,32 @@ function getDeliveryBlockedMessage() {
 function syncCheckoutBtnForDistance() {
   const btn = document.getElementById('cart-checkout-btn');
   if (!btn) return;
-  const storeOpen = typeof Storage === 'undefined' || !Storage.isStoreOpen || Storage.isStoreOpen();
-  const outside = isDistanceOutsideRadius(cartDistanceState);
-  const blocked = isDeliveryBlocked(cartDistanceState);
-  const lock = outside || blocked;
-  btn.hidden = lock;
-  btn.disabled = !storeOpen || lock;
-  btn.setAttribute('aria-disabled', (!storeOpen || lock) ? 'true' : 'false');
+  // Uber/99 ou retirada: nunca esconde o botão por distância/horário
+  btn.hidden = false;
+  btn.disabled = false;
+  btn.setAttribute('aria-disabled', 'false');
+  syncCartClosedNote();
+}
+
+function syncCartClosedNote() {
+  let note = document.getElementById('cart-closed-note');
+  const open = typeof Storage === 'undefined' || !Storage.isStoreOpen || Storage.isStoreOpen();
+  if (open) {
+    if (note) note.hidden = true;
+    return;
+  }
+  if (!note) {
+    const checkout = document.getElementById('cart-checkout');
+    const btn = document.getElementById('cart-checkout-btn');
+    if (!checkout || !btn) return;
+    note = document.createElement('p');
+    note.id = 'cart-closed-note';
+    note.className = 'cart-closed-note';
+    checkout.insertBefore(note, btn);
+  }
+  note.hidden = false;
+  note.textContent = Storage.storeClosedMessage?.()
+    || 'Loja fechada agora — você ainda pode enviar o pedido no WhatsApp.';
 }
 
 function setCartDistanceUI(state) {
@@ -1323,11 +1342,11 @@ function applyStoreStatus() {
   });
   const checkoutBtn = document.getElementById('cart-checkout-btn');
   if (checkoutBtn) {
-    const outside = isDistanceOutsideRadius(cartDistanceState);
-    checkoutBtn.hidden = outside;
-    checkoutBtn.disabled = !open || outside;
-    checkoutBtn.setAttribute('aria-disabled', (!open || outside) ? 'true' : 'false');
+    checkoutBtn.hidden = false;
+    checkoutBtn.disabled = false;
+    checkoutBtn.setAttribute('aria-disabled', 'false');
   }
+  syncCartClosedNote?.();
 }
 
 function applySettings() {
@@ -2965,13 +2984,6 @@ function closeCart() {
 async function checkoutCart() {
   const error = document.getElementById('cart-error');
   const btn = document.getElementById('cart-checkout-btn');
-  if (typeof Storage !== 'undefined' && Storage.isStoreOpen && !Storage.isStoreOpen()) {
-    if (error) {
-      error.textContent = Storage.storeClosedMessage?.() || 'Loja fechada no momento.';
-      error.hidden = false;
-    }
-    return;
-  }
   const nome = document.getElementById('cart-nome')?.value.trim() || '';
   const sobrenome = document.getElementById('cart-sobrenome')?.value.trim() || '';
   let address = syncComposedCartAddress();
@@ -3026,6 +3038,15 @@ async function checkoutCart() {
   const cityId = String(getCartCityId?.() || '').toLowerCase();
   const isPickup = cityId === 'retirada';
 
+  if (!cityId) {
+    if (error) {
+      error.textContent = 'Escolha Retirada ou Uber / 99 para continuar.';
+      error.hidden = false;
+    }
+    document.getElementById('cart-zones')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
   if (!isPickup) {
     if (!street) {
       if (error) {
@@ -3053,7 +3074,7 @@ async function checkoutCart() {
     }
     if (address.length < 8) {
       if (error) {
-        error.textContent = 'Informe o endereço completo para entrega.';
+        error.textContent = 'Informe o endereço completo para a corrida.';
         error.hidden = false;
       }
       document.getElementById('cart-street')?.focus();
@@ -3075,7 +3096,7 @@ async function checkoutCart() {
       ...(cartDistanceState || {}),
       checked: true,
       inRange: false,
-      allowCheckout: false,
+      allowCheckout: true,
       blocked: true,
       message: getDeliveryBlockedMessage(),
       address,
@@ -3085,51 +3106,24 @@ async function checkoutCart() {
   }
   if (!delivery.known && !isPickup) {
     if (error) {
-      error.textContent = 'Selecione Divinópolis ou Retirada para continuar.';
+      error.textContent = 'Escolha Retirada ou Uber / 99 para continuar.';
       error.hidden = false;
     }
     document.getElementById('cart-zones')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
 
-  // Distância: só valida em entrega (retirada pula)
+  // Distância só informativa (Uber/99 — cliente chama o carro)
   let distState = cartDistanceState || {};
   if (!isPickup) {
-    if (!cartDistanceState || cartDistanceState.address !== address) {
-      if (btn) btn.disabled = true;
-      await verifyCartDeliveryDistance(address);
-      if (btn) btn.disabled = false;
+    try {
+      if (!cartDistanceState || cartDistanceState.address !== address) {
+        await verifyCartDeliveryDistance(address);
+      }
+    } catch {
+      /* não bloqueia finalização */
     }
     distState = cartDistanceState || {};
-
-    if (isDistanceOutsideRadius(distState)) {
-      if (error) {
-        error.textContent =
-          'Endereço fora da rota de entrega. Confirme no WhatsApp se conseguimos encaixar.';
-        error.hidden = false;
-      }
-      setCartDistanceUI({ ...distState, address });
-      document.getElementById('cart-distance-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      return;
-    }
-
-    if (!delivery.known && distState.checked === false && !distState.pending) {
-      if (error) {
-        error.textContent = 'Selecione Divinópolis ou Retirada para continuar.';
-        error.hidden = false;
-      }
-      document.getElementById('cart-zones')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      return;
-    }
-
-    if (distState.blocked || isDeliveryBlocked(distState)) {
-      if (error) {
-        error.textContent = getDeliveryBlockedMessage();
-        error.hidden = false;
-      }
-      document.getElementById('cart-distance-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      return;
-    }
   }
 
   const payment = Cart?.setPayment?.(
