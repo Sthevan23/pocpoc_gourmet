@@ -273,7 +273,10 @@ function setCartDistanceUI(state) {
   const waBtn = document.getElementById('cart-distance-wa');
   const ifoodBtn = document.getElementById('cart-distance-ifood');
   if (!el) return;
-  if (!state || !state.message) {
+
+  // Poc Poc: não mostra km / “Uber/99 ou retirada” no carrinho
+  const blocked = !!(state?.blocked || isDeliveryBlocked(state));
+  if (!state || !state.message || !blocked) {
     if (box) box.hidden = true;
     el.textContent = '';
     el.className = 'cart-distance';
@@ -283,30 +286,18 @@ function setCartDistanceUI(state) {
     syncCheckoutBtnForDistance();
     return;
   }
+
   if (box) box.hidden = false;
   el.textContent = state.message;
-  el.className = 'cart-distance';
-
-  const outside = isDistanceOutsideRadius(state);
-  const blocked = !!(state.blocked || isDeliveryBlocked(state));
-  if (state.checking) el.classList.add('cart-distance--pending');
-  else if (blocked) el.classList.add('cart-distance--out');
-  else if (!outside && state.km != null) el.classList.add('cart-distance--ok');
-  else if (outside) el.classList.add('cart-distance--out');
-  else el.classList.add('cart-distance--ok');
-
-  if (actions) actions.hidden = !(outside || blocked);
+  el.className = 'cart-distance cart-distance--out';
+  if (actions) actions.hidden = false;
   if (waBtn) {
-    waBtn.hidden = !(outside || blocked);
-    if (blocked) {
-      waBtn.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Falar no WhatsApp';
-    } else if (outside) {
-      waBtn.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Confirmar no WhatsApp';
-    }
+    waBtn.hidden = false;
+    waBtn.innerHTML = '<i class="fab fa-whatsapp" aria-hidden="true"></i> Falar no WhatsApp';
   }
   const ifoodUrl = getIfoodUrl();
   if (ifoodBtn) {
-    if ((outside || blocked) && ifoodUrl) {
+    if (ifoodUrl) {
       ifoodBtn.hidden = false;
       ifoodBtn.href = ifoodUrl;
     } else {
@@ -467,39 +458,28 @@ function syncFulfillmentUI() {
   const checkoutOpen = !document.getElementById('cart-checkout')?.hidden;
   const hasItems = cartItems.length > 0 && checkoutOpen;
   const delivery = resolveDeliveryForCart();
-  const radiusKm = getDeliveryRadiusKm();
+  const cityId = String(getCartCityId() || '').toLowerCase();
+  const isPickup = cityId === 'retirada';
 
-  setCartCity(getCartCityId());
+  setCartCity(cityId);
 
   if (zonesWrap) zonesWrap.hidden = !hasItems;
   if (zoneStatus) {
+    // Sem texto de km / “Uber/99 ou retirada” — só aviso se região bloqueada
     if (hasItems && (delivery.blocked || isDeliveryBlocked())) {
       zoneStatus.textContent = getDeliveryBlockedMessage();
       zoneStatus.hidden = false;
-    } else if (hasItems && (delivery.consult || isDistanceOutsideRadius(cartDistanceState))) {
-      zoneStatus.textContent =
-        `Acima de ${radiusKm} km (≈ ${String(cartDistanceState?.km ?? '').toString().replace('.', ',')} km) — consulte no WhatsApp ou iFood.`;
-      zoneStatus.hidden = false;
-    } else if (hasItems && cartDistanceState?.km != null) {
-      const tier = delivery.feeLabel || delivery.label || 'Uber/99';
-      zoneStatus.textContent = `≈ ${String(cartDistanceState.km).replace('.', ',')} km · ${tier}`;
-      zoneStatus.hidden = false;
-    } else if (hasItems && (delivery.city || delivery.label)) {
-      zoneStatus.textContent = `Informe o endereço completo para estimar a distância.`;
-      zoneStatus.hidden = false;
-    } else if (hasItems) {
-      zoneStatus.textContent = `Toque em Uber/99 ou Retirada para continuar.`;
-      zoneStatus.hidden = false;
     } else {
       zoneStatus.hidden = true;
+      zoneStatus.textContent = '';
     }
   }
   if (addressHint) {
-    addressHint.textContent = delivery.label
-      ? `Endereço em ${delivery.label} — entrega por Uber/99 (você solicita)`
-      : `Digite o CEP para buscar rua e bairro.`;
+    addressHint.textContent = isPickup
+      ? 'Retirada no local — sem endereço.'
+      : 'Digite o CEP para buscar rua e bairro.';
   }
-  if (addressWrap) addressWrap.hidden = !hasItems;
+  if (addressWrap) addressWrap.hidden = !hasItems || isPickup;
   syncCheckoutBtnForDistance();
 }
 
