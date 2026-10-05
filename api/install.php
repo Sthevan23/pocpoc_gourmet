@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Rode UMA VEZ após importar schema.sql e configurar config.php.
- * Depois APAGUE este arquivo do servidor.
+ * Rode UMA VEZ após configurar config.php.
+ * Cria tabelas + catálogo inicial. Depois APAGUE este arquivo.
  */
 
 require __DIR__ . '/bootstrap.php';
@@ -14,7 +14,8 @@ $cfg = app_config();
 $messages = [];
 
 try {
-  db()->query('SELECT 1');
+  $pdo = db();
+  $pdo->query('SELECT 1');
   $messages[] = 'Conexão MySQL OK.';
 } catch (Throwable $e) {
   echo '<h1>Erro MySQL</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
@@ -22,11 +23,34 @@ try {
   exit;
 }
 
+try {
+  $pdo->exec("CREATE TABLE IF NOT EXISTS store_state (
+    id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    payload LONGTEXT NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+  $pdo->exec("CREATE TABLE IF NOT EXISTS admin_users (
+    id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    email VARCHAR(190) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uniq_admin_email (email)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+  $messages[] = 'Tabelas store_state e admin_users OK.';
+} catch (Throwable $e) {
+  echo '<h1>Erro ao criar tabelas</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
+  exit;
+}
+
 $email = trim((string)($cfg['admin_email'] ?? 'admin@pocpocgourmet.com.br'));
 $password = (string)($cfg['admin_password'] ?? 'pocpoc123');
 $hash = password_hash($password, PASSWORD_DEFAULT);
 
-$stmt = db()->prepare('INSERT INTO admin_users (id, email, password_hash) VALUES (1, :e, :h)
+$stmt = $pdo->prepare('INSERT INTO admin_users (id, email, password_hash) VALUES (1, :e, :h)
   ON DUPLICATE KEY UPDATE email = VALUES(email), password_hash = VALUES(password_hash)');
 $stmt->execute([':e' => $email, ':h' => $hash]);
 $messages[] = 'Admin criado: ' . htmlspecialchars($email) . ' / senha do config.php';
@@ -76,10 +100,9 @@ foreach ($messages as $m) {
 }
 echo '</ul>';
 echo '<p><strong>Próximos passos:</strong></p><ol>';
-echo '<li>Abra o painel: <code>/admin/login.html</code></li>';
-echo '<li>Login: <code>' . htmlspecialchars($email) . '</code> / senha do config</li>';
+echo '<li>Abra o painel: <a href="/admin/login.html">/admin/login.html</a></li>';
+echo '<li>Login: <code>' . htmlspecialchars($email) . '</code> / <code>pocpoc123</code></li>';
 echo '<li><strong>APAGUE</strong> o arquivo <code>api/install.php</code> do servidor</li>';
-echo '<li>Troque a senha depois (ou no config + install de novo)</li>';
 echo '</ol>';
 echo '<p class="warn">Deixe este arquivo no ar só durante a instalação.</p>';
 echo '</body></html>';
