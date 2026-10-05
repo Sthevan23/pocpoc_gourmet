@@ -2793,8 +2793,18 @@ body.store-is-closed .header__nav a {
 .cart-drawer__discount[hidden],
 .cart-coupon[hidden],
 .cart-drawer__total[hidden],
-.cart-drawer__delivery[hidden] {
+.cart-drawer__delivery[hidden],
+.cart-drawer__delivery-fee[hidden],
+.cart-checkout[hidden],
+.cart-zones[hidden],
+.pix-details[hidden],
+.cart-address[hidden] {
   display: none !important;
+}
+
+.cart-drawer__foot.is-empty {
+  max-height: none;
+  padding-top: 0.85rem;
 }
 
 .cart-drawer__total {

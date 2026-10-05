@@ -2817,6 +2817,9 @@ function renderCartUI() {
   if (continueBtn) continueBtn.hidden = lines === 0;
   if (goMenu) goMenu.hidden = lines !== 0;
 
+  const foot = document.querySelector('.cart-drawer__foot');
+  if (foot) foot.classList.toggle('is-empty', lines === 0);
+
   if (!itemsEl) return;
 
   if (!cartItems.length) {
@@ -2824,10 +2827,13 @@ function renderCartUI() {
     itemsEl.innerHTML = `
       <div class="cart-drawer__empty-box">
         <p class="cart-drawer__empty">Seu carrinho está vazio.</p>
-        <p class="cart-drawer__empty-note">Escolha doces no cardápio e toque em Adicionar.</p>
+        <p class="cart-drawer__empty-note">Escolha no cardápio e toque em Adicionar.</p>
       </div>
     `;
-    if (checkout) checkout.hidden = true;
+    if (checkout) {
+      checkout.hidden = true;
+      checkout.setAttribute('hidden', '');
+    }
     if (totalRow) totalRow.hidden = true;
     if (discountRow) {
       discountRow.hidden = true;
@@ -2839,16 +2845,26 @@ function renderCartUI() {
     if (zoneStatus) zoneStatus.hidden = true;
     const zonesWrap = document.getElementById('cart-zones');
     if (zonesWrap) zonesWrap.hidden = true;
+    const addressWrap = document.getElementById('cart-address-wrap');
+    if (addressWrap) addressWrap.hidden = true;
+    const pixBox = document.getElementById('cart-pix-details');
+    if (pixBox) pixBox.hidden = true;
     if (couponBox) {
       couponBox.hidden = true;
       couponBox.style.display = 'none';
     }
+    const err = document.getElementById('cart-error');
+    if (err) err.hidden = true;
     return;
   }
 
-  if (checkout) checkout.hidden = false;
+  if (checkout) {
+    checkout.hidden = false;
+    checkout.removeAttribute('hidden');
+  }
   syncFulfillmentUI();
-
+  fillCartPixDetails();
+  syncPaymentNote(Cart?.getPayment?.() || 'pix');
   const nextSig = cartItemsSignature();
   if (nextSig === cartItemsListSig && patchCartItemRows(itemsEl)) {
     return;
@@ -2940,6 +2956,7 @@ function openCart() {
   requestAnimationFrame(() => {
     renderCartUI();
     fillCustomerFields();
+    fillCartPixDetails();
     bindPhoneMask(document.getElementById('cart-phone'));
   });
 }
@@ -3734,9 +3751,14 @@ function fillCartPixDetails() {
   const nameEl = document.getElementById('cart-pix-name');
   const bankEl = document.getElementById('cart-pix-bank');
   const keyEl = document.getElementById('cart-pix-key');
-  if (nameEl) nameEl.textContent = pix.name;
-  if (bankEl) bankEl.textContent = pix.bank;
-  if (keyEl) keyEl.textContent = pix.key;
+  const bankRow = bankEl?.closest('p');
+  if (nameEl) nameEl.textContent = pix.name || '—';
+  if (keyEl) keyEl.textContent = pix.key || '—';
+  if (bankEl) {
+    const bank = String(pix.bank || '').trim();
+    bankEl.textContent = bank || '—';
+    if (bankRow) bankRow.hidden = !bank;
+  }
 }
 
 function syncPaymentNote(pay) {
