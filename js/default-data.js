@@ -83,7 +83,7 @@ const PIPOCANDO_DEFAULT_DATA = {
 
     salesGoals: {
       dailyPots: 20,
-      dailyRevenue: 500,
+      dailyRevenue: 0,
       monthlyPots: 400,
       monthlyRevenue: 10000,
     },

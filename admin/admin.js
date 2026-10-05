@@ -541,7 +541,7 @@ function openGoalsHistory(tab = 'daily') {
         <td><strong>${escapeHtml(dateLabel)}</strong>${row.isToday ? ' <small>(hoje)</small>' : ''}</td>
         <td>${row.orders}</td>
         <td>${row.pots} / ${row.potsGoal}</td>
-        <td>${Storage.formatCurrency(row.revenue)} / ${Storage.formatCurrency(row.revenueGoal)}</td>
+        <td>${Storage.formatCurrency(row.revenue)}</td>
         <td>${status}</td>
       </tr>
     `;
@@ -563,7 +563,7 @@ function openGoalsHistory(tab = 'daily') {
     `;
   }).join('');
 
-  const dailySummary = `Últimos 30 dias: <strong>${history.summary.daysHit}</strong> dia(s) com meta batida · meta ${goals.dailyPots} pipocas / ${Storage.formatCurrency(goals.dailyRevenue)}`;
+  const dailySummary = `Últimos 30 dias: <strong>${history.summary.daysHit}</strong> dia(s) com meta batida · meta ${goals.dailyPots} pipocas`;
   const monthlySummary = `Últimos 6 meses: <strong>${history.summary.monthsHit}</strong> mês(es) com meta batida · meta ${goals.monthlyPots} pipocas / ${Storage.formatCurrency(goals.monthlyRevenue)}`;
 
   openModal('Histórico de metas', `
@@ -691,7 +691,7 @@ function renderSalesGoals() {
 
   if (document.querySelector('#goal-card-daily .goal-card__target')) {
     document.querySelector('#goal-card-daily .goal-card__target').textContent =
-      `${goals.dailyPots} pipocas · ${Storage.formatCurrency(goals.dailyRevenue)}`;
+      `${goals.dailyPots} pipocas`;
   }
   if (document.querySelector('#goal-card-monthly .goal-card__target')) {
     document.querySelector('#goal-card-monthly .goal-card__target').textContent =
@@ -699,39 +699,36 @@ function renderSalesGoals() {
   }
 
   const dailyPotsEl = document.getElementById('goal-daily-pots');
-  const dailyRevEl = document.getElementById('goal-daily-revenue');
+  const dailyRevWrap = document.getElementById('goal-daily-revenue-wrap');
   const monthlyPotsEl = document.getElementById('goal-monthly-pots');
   const monthlyRevEl = document.getElementById('goal-monthly-revenue');
   const dailyStatus = document.getElementById('goal-daily-status');
   const monthlyStatus = document.getElementById('goal-monthly-status');
+  const dailyDone = !!daily.potsDone;
 
   if (dailyPotsEl) dailyPotsEl.textContent = `${daily.pots} / ${goals.dailyPots}`;
-  if (dailyRevEl) {
-    dailyRevEl.textContent = `${Storage.formatCurrency(daily.revenue)} / ${Storage.formatCurrency(goals.dailyRevenue)}`;
-  }
+  if (dailyRevWrap) dailyRevWrap.hidden = true;
   if (monthlyPotsEl) monthlyPotsEl.textContent = `${monthly.pots} / ${goals.monthlyPots}`;
   if (monthlyRevEl) {
     monthlyRevEl.textContent = `${Storage.formatCurrency(monthly.revenue)} / ${Storage.formatCurrency(goals.monthlyRevenue)}`;
   }
 
   setBar('goal-daily-pots-bar', daily.potsPct);
-  setBar('goal-daily-revenue-bar', daily.revenuePct);
   setBar('goal-monthly-pots-bar', monthly.potsPct);
   setBar('goal-monthly-revenue-bar', monthly.revenuePct);
 
-  dailyCard?.classList.toggle('is-done', !!daily.done);
+  dailyCard?.classList.toggle('is-done', dailyDone);
   monthlyCard?.classList.toggle('is-done', !!monthly.done);
-  if (badge) badge.hidden = !daily.done;
+  if (badge) badge.hidden = !dailyDone;
 
   if (dailyStatus) {
-    if (daily.done) {
+    if (dailyDone) {
       dailyStatus.textContent = 'Meta do dia batida! 🎉 · zera à meia-noite';
-    } else if (daily.pots === 0 && daily.revenue === 0) {
+    } else if (daily.pots === 0) {
       dailyStatus.textContent = 'Começando do zero hoje — meta zera todo dia à meia-noite.';
     } else {
       const lackPots = Math.max(0, goals.dailyPots - daily.pots);
-      const lackMoney = Math.max(0, goals.dailyRevenue - daily.revenue);
-      dailyStatus.textContent = `Faltam ${lackPots} pipoca(s) e ${Storage.formatCurrency(lackMoney)} hoje.`;
+      dailyStatus.textContent = `Faltam ${lackPots} pipoca(s) hoje.`;
     }
   }
   if (monthlyStatus) {
@@ -747,11 +744,11 @@ function renderSalesGoals() {
   // Avisa uma vez por dia quando a meta diária fecha
   try {
     const flagKey = `pipocando_goal_day_toast_${dayKey}`;
-    if (daily.done && dayKey && sessionStorage.getItem(flagKey) !== '1' && goalsToastDayKey !== dayKey) {
+    if (dailyDone && dayKey && sessionStorage.getItem(flagKey) !== '1' && goalsToastDayKey !== dayKey) {
       sessionStorage.setItem(flagKey, '1');
       goalsToastDayKey = dayKey;
       showToast(
-        `Meta do dia batida! ${goals.dailyPots} pipocas e ${Storage.formatCurrency(goals.dailyRevenue)} 🎉`,
+        `Meta do dia batida! ${goals.dailyPots} pipocas 🎉`,
         'success',
       );
     }

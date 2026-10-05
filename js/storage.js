@@ -1525,7 +1525,8 @@ const Storage = (() => {
     };
     return {
       dailyPots: num(g.dailyPots, num(d.dailyPots, 30)),
-      dailyRevenue: num(g.dailyRevenue, num(d.dailyRevenue, 870)),
+      // Meta diária só por quantidade de pipocas (sem valor em R$)
+      dailyRevenue: 0,
       monthlyPots: num(g.monthlyPots, num(d.monthlyPots, 660)),
       monthlyRevenue: num(g.monthlyRevenue, num(d.monthlyRevenue, 19140)),
     };
@@ -1586,10 +1587,10 @@ const Storage = (() => {
       daily: {
         ...daily,
         potsPct: pct(daily.pots, goals.dailyPots),
-        revenuePct: pct(daily.revenue, goals.dailyRevenue),
+        revenuePct: 0,
         potsDone: daily.pots >= goals.dailyPots,
-        revenueDone: daily.revenue >= goals.dailyRevenue,
-        done: daily.pots >= goals.dailyPots && daily.revenue >= goals.dailyRevenue,
+        revenueDone: true,
+        done: daily.pots >= goals.dailyPots,
       },
       monthly: {
         ...monthly,
@@ -1659,8 +1660,8 @@ const Storage = (() => {
         revenue: row.revenue,
         orders: row.orders,
         potsGoal: goals.dailyPots,
-        revenueGoal: goals.dailyRevenue,
-        done: row.pots >= goals.dailyPots && row.revenue >= goals.dailyRevenue,
+        revenueGoal: 0,
+        done: row.pots >= goals.dailyPots,
         isToday: key === today,
       });
     }
