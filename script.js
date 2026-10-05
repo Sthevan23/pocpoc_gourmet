@@ -1669,11 +1669,36 @@ function getPipocaProducts() {
     });
 }
 
+function pipocaFamilyKey(product) {
+  return String(product?.name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(250|500|1000)\s*ml\b/g, '')
+    .replace(/\b1\s*l(?:itro)?\b/g, '')
+    .replace(/\b1l\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getPipocaSizeVariants(product) {
+  const key = pipocaFamilyKey(product);
+  if (!key) return product ? [product] : [];
+  const variants = getPipocaProducts().filter((p) => pipocaFamilyKey(p) === key);
+  if (!variants.length && product) return [product];
+  return variants.sort((a, b) => {
+    const order = { '250ml': 0, '500ml': 1, '1000ml': 2 };
+    const sa = order[String(a.size || '').toLowerCase()] ?? 9;
+    const sb = order[String(b.size || '').toLowerCase()] ?? 9;
+    return sa - sb;
+  });
+}
+
 function pipocaSizeLetter(product) {
   const size = String(product?.size || '').toLowerCase();
   if (size.includes('250')) return 'P';
   if (size.includes('500') || /\bm\b/.test(size)) return 'M';
-  if (size.includes('1000')) return 'G';
+  if (size.includes('1000') || size.includes('1l')) return 'G';
   const name = String(product?.name || '');
   const match = name.match(/\b([PMG])\b/i);
   return match ? match[1].toUpperCase() : '';
@@ -1802,11 +1827,10 @@ function pipocaFlavorCatalog() {
 
 function productMaxFlavorsPerUnit(product) {
   const configured = Number(product?.flavorSlots ?? product?.maxFlavors);
-  if (Number.isFinite(configured) && configured > 0) return configured;
+  if (Number.isFinite(configured) && configured >= 0) {
+    return configured > 0 ? configured : 0;
+  }
   if (!isPipocaProduct(product)) return 1;
-  const size = String(product?.size || '').toLowerCase();
-  const name = String(product?.name || '').toLowerCase();
-  if (size.includes('500') || size.includes('1000') || /\bpipoca\s*m\b/.test(name) || /\bpipoca\s*g\b/.test(name)) return 2;
   return 1;
 }
 
@@ -1894,7 +1918,7 @@ function pipocaFlavorTone(flavorName) {
 
 
 function buildPipocaSizePickerHTML(product) {
-  const items = getPipocaProducts();
+  const items = getPipocaSizeVariants(product);
   if (items.length < 2) return '';
   const currentId = product?.id || '';
   const chips = items.map((item) => {
