@@ -14,7 +14,7 @@
   --color-white: #ffffff;
   --color-line: rgba(88, 56, 24, 0.12);
 
-  --font-brand: 'Libre Bodoni', Georgia, serif;
+  --font-brand: 'Allura', cursive;
   --font-script: 'Great Vibes', cursive;
   --font-display: 'Libre Bodoni', Georgia, serif;
   --font-body: 'Manrope', system-ui, sans-serif;
@@ -445,8 +445,7 @@ p {
   }
 
   .header__brand .brand-logo__name {
-    font-size: 1.2rem;
-    letter-spacing: 0.1em;
+    font-size: 1.45rem;
   }
 
   .header__toggle {
@@ -788,11 +787,11 @@ p {
 .brand-logo__name {
   font-family: var(--font-brand);
   color: var(--color-pink);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  padding-left: 0.14em;
-  line-height: 0.95;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  padding-left: 0;
+  line-height: 0.85;
 }
 
 .brand-logo__sub {
@@ -808,9 +807,10 @@ p {
 }
 
 .brand-logo--hero .brand-logo__name {
-  font-size: clamp(3.6rem, 11vw, 5.8rem);
-  line-height: 1;
-  padding-block: 0.04em;
+  font-size: clamp(4.8rem, 14vw, 7.5rem);
+  line-height: 1.05;
+  padding-block: 0.08em 0.04em;
+  transform: translateX(0.04em);
   color: #ff8fab;
   filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.35));
 }
@@ -827,8 +827,8 @@ p {
 }
 
 .brand-logo--header .brand-logo__name {
-  font-size: 1.55rem;
-  letter-spacing: 0.12em;
+  font-size: 2.15rem;
+  letter-spacing: 0.01em;
 }
 
 .brand-logo--header .brand-logo__sub {
@@ -838,8 +838,8 @@ p {
 }
 
 .brand-logo--footer .brand-logo__name {
-  font-size: 2rem;
-  letter-spacing: 0.12em;
+  font-size: 2.4rem;
+  letter-spacing: 0.01em;
 }
 
 .brand-logo--footer .brand-logo__sub {
@@ -3760,9 +3760,9 @@ body.store-is-closed .header__nav a {
   }
 
   .brand-logo--hero .brand-logo__name {
-    font-size: clamp(2.4rem, 11vw, 3.2rem);
-    line-height: 1;
-    padding-block: 0.06em;
+    font-size: clamp(2.85rem, 13vw, 3.75rem);
+    line-height: 1.08;
+    padding-block: 0.12em 0.06em;
   }
 
   .brand-logo--hero .brand-logo__sub {
@@ -3995,7 +3995,7 @@ body.store-is-closed .header__nav a {
   }
 
   .brand-logo--hero .brand-logo__name {
-    font-size: clamp(2.2rem, 11vw, 2.9rem);
+    font-size: clamp(2.6rem, 12.5vw, 3.25rem);
   }
 
   .hero__title {
