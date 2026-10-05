@@ -871,14 +871,14 @@ function resolveLiveCoupon(coupon) {
 }
 
 function addToCart(item) {
-  if (typeof Storage !== 'undefined' && Storage.isStoreOpen && !Storage.isStoreOpen()) {
-    showCartFeedback(Storage.storeClosedMessage?.() || 'Loja fechada no momento.');
-    return false;
-  }
   if (Cart) {
-    Cart.addItem(item);
+    const ok = Cart.addItem(item);
     cartItems = Cart.getItems();
-    return;
+    if (!ok) {
+      scheduleRenderCartUI();
+      return false;
+    }
+    return true;
   }
   const key = cartLineKey(item.productId, item.flavor, item.size, item.notes);
   const existing = cartItems.find((row) => row.key === key);
@@ -888,6 +888,7 @@ function addToCart(item) {
     cartItems.push({ ...item, key, qty: Number(item.qty) || 1, notes: item.notes || '' });
   }
   saveCart();
+  return true;
 }
 
 function updateCartQty(key, qty) {
@@ -2540,6 +2541,7 @@ function addCurrentProductToCart() {
   if (error) error.hidden = true;
 
   const notes = document.getElementById('lightbox-notes')?.value.trim() || '';
+  let added = 0;
 
   pricedLines.forEach((line) => {
     const detailParts = [product.size];
@@ -2548,7 +2550,7 @@ function addCurrentProductToCart() {
     }
     detailParts.push(line.flavor);
     const detail = detailParts.filter(Boolean).join(' · ');
-    addToCart({
+    const ok = addToCart({
       productId: product.id,
       name: product.name,
       price: line.price,
@@ -2560,7 +2562,18 @@ function addCurrentProductToCart() {
       image: resolveProductImage(product),
       notes,
     });
+    if (ok) added += 1;
   });
+
+  if (!added) {
+    if (error) {
+      error.textContent = 'Não deu para adicionar. Confira o preço ou fale no WhatsApp.';
+      error.hidden = false;
+    }
+    return;
+  }
+
+  scheduleRenderCartUI();
 
   if (addBtn) {
     addBtn.classList.add('is-added');
