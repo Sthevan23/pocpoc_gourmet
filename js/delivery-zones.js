@@ -2,11 +2,7 @@
  * Entrega / retirada — Poc Poc Gourmet
  * Origem: Rua Barbosa Lagares, 648 — Interlagos, Divinópolis/MG
  *
- * Até 3 km → R$ 5
- * 3 a 5 km → R$ 7
- * 5 a 7 km → R$ 8
- * 7 a 10 km → R$ 12
- * Acima de 10 km → consultar (WhatsApp / iFood)
+ * Sem taxa de frete no site: retirada no local ou Uber/99 (cliente solicita).
  */
 window.PipocandoDelivery = (() => {
   const ZONES = [
@@ -366,7 +362,7 @@ window.PipocandoDelivery = (() => {
         fee: 0,
         radiusKm,
         pending: true,
-        message: 'Informe CEP, rua e número para estimar a distância e a taxa.',
+        message: 'Informe CEP, rua e número para estimar a distância.',
       };
       return lastDistance;
     }
@@ -380,10 +376,10 @@ window.PipocandoDelivery = (() => {
         allowCheckout: cityKnown,
         softWarn: false,
         km: null,
-        fee: cityKnown ? 5 : 0,
+        fee: 0,
         radiusKm,
         message: cityKnown
-          ? 'Não estimamos a distância no mapa, mas sua cidade é atendida. Taxa mínima R$ 5 — confirmamos no WhatsApp.'
+          ? 'Não estimamos a distância no mapa, mas sua cidade é atendida. Confirme no WhatsApp.'
           : 'Não localizamos no mapa. Selecione a cidade ou fale no WhatsApp.',
       };
       return lastDistance;
@@ -417,7 +413,7 @@ window.PipocandoDelivery = (() => {
     let message;
     if (withinRadius && !tier.consult) {
       message =
-        `≈ ${String(rounded).replace('.', ',')} km · ${tier.label} · frete R$ ${String(tier.fee).replace('.', ',')}`;
+        `≈ ${String(rounded).replace('.', ',')} km · ${tier.label}`;
     } else if (tier.consult || outOfRange) {
       message =
         `Fora da rota automática (≈ ${String(rounded).replace('.', ',')} km · limite ${radiusKm} km). ` +

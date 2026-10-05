@@ -181,8 +181,7 @@ window.AuroraCart = (() => {
   }
 
   function payable(address) {
-    const fee = getFulfillment() === 'entrega' ? getDeliveryFee(address) : 0;
-    return Math.max(0, subtotal() - discount() + fee);
+    return Math.max(0, subtotal() - discount());
   }
 
   function addItem(item) {
@@ -277,21 +276,7 @@ window.AuroraCart = (() => {
   }
 
   function getDeliveryFee(address) {
-    const dist = window.PipocandoDelivery?.getLastDistance?.();
-    if (dist && Number.isFinite(Number(dist.km))) {
-      const tier = PipocandoDelivery.feeFromKm(dist.km);
-      return tier.consult ? 0 : tier.fee;
-    }
-    if (dist && Number(dist.fee) > 0) return Number(dist.fee);
-    const addr = address !== undefined ? address : loadCustomer().address;
-    if (window.PipocandoDelivery) {
-      const resolved = PipocandoDelivery.resolveFromAddress(addr);
-      if (resolved.known && resolved.fee > 0) return resolved.fee;
-      return 0;
-    }
-    if (typeof Storage === 'undefined') return 0;
-    const n = Number(Storage.getSettings()?.deliveryFee);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
+    return 0;
   }
 
   function resolveDelivery(address) {
@@ -309,7 +294,7 @@ window.AuroraCart = (() => {
     if (window.PipocandoDelivery?.zonesSummaryText) {
       return PipocandoDelivery.zonesSummaryText();
     }
-    return 'Até 3 km R$ 5 · 3–5 km R$ 7 · 5–7 km R$ 8 · 7–10 km R$ 12 · acima de 10 km consultar';
+    return 'Retirada no local · Entrega por Uber/99 (solicitada pelo cliente)';
   }
 
   function formatMoney(value) {
@@ -402,8 +387,7 @@ window.AuroraCart = (() => {
       ? Storage.calcCouponDiscount(live, sub)
       : 0;
     const mode = 'entrega';
-    const fee = getDeliveryFee(address);
-    const total = Math.max(0, sub - disc + fee);
+    const total = Math.max(0, sub - disc);
     const pay = payment || getPayment();
 
     const lines = list.map((item) => {

@@ -461,18 +461,15 @@ function syncFulfillmentUI() {
       zoneStatus.textContent =
         `Acima de ${radiusKm} km (≈ ${String(cartDistanceState?.km ?? '').toString().replace('.', ',')} km) — consulte no WhatsApp ou iFood.`;
       zoneStatus.hidden = false;
-    } else if (hasItems && delivery.known && delivery.fee > 0 && cartDistanceState?.km != null) {
-      const tier = delivery.feeLabel || delivery.label || '';
-      zoneStatus.textContent = `Frete ${Storage.formatCurrency(delivery.fee)}${tier ? ` (${tier})` : ''} · ≈ ${String(cartDistanceState.km).replace('.', ',')} km`;
-      zoneStatus.hidden = false;
-    } else if (hasItems && delivery.known && delivery.fee > 0) {
-      zoneStatus.textContent = `Frete ${Storage.formatCurrency(delivery.fee)} — já incluído no total`;
+    } else if (hasItems && cartDistanceState?.km != null) {
+      const tier = delivery.feeLabel || delivery.label || 'Uber/99';
+      zoneStatus.textContent = `≈ ${String(cartDistanceState.km).replace('.', ',')} km · ${tier}`;
       zoneStatus.hidden = false;
     } else if (hasItems && (delivery.city || delivery.label)) {
-      zoneStatus.textContent = `Informe o endereço completo para calcular a taxa por km.`;
+      zoneStatus.textContent = `Informe o endereço completo para estimar a distância.`;
       zoneStatus.hidden = false;
     } else if (hasItems) {
-      zoneStatus.textContent = `Toque em Divinópolis ou Retirada para continuar.`;
+      zoneStatus.textContent = `Toque em Uber/99 ou Retirada para continuar.`;
       zoneStatus.hidden = false;
     } else {
       zoneStatus.hidden = true;
@@ -480,8 +477,8 @@ function syncFulfillmentUI() {
   }
   if (addressHint) {
     addressHint.textContent = delivery.label
-      ? `Endereço em ${delivery.label} — taxa por km (até ${radiusKm} km no site)`
-      : `Digite o CEP para buscar rua e bairro (até ${radiusKm} km da Cobilândia).`;
+      ? `Endereço em ${delivery.label} — entrega por Uber/99 (você solicita)`
+      : `Digite o CEP para buscar rua e bairro.`;
   }
   if (addressWrap) addressWrap.hidden = !hasItems;
   syncCheckoutBtnForDistance();
@@ -540,18 +537,14 @@ function syncCartCityFromAddress() {
 }
 
 function getDeliveryFee() {
-  const delivery = resolveDeliveryForCart();
-  if (delivery.known) return delivery.fee;
-  const address = getCartAddressForFee();
-  if (Cart) return Cart.getDeliveryFee(address);
   return 0;
 }
 
 function getDeliveryNote() {
   if (window.PipocandoDelivery?.zonesSummaryText) return PipocandoDelivery.zonesSummaryText();
   const note = String(Storage.getSettings()?.deliveryNote || '').trim();
-  if (note && !/vit[oó]ria\s*r\$/i.test(note)) return note;
-  return 'Até 3 km R$ 5 · 3–5 km R$ 7 · 5–7 km R$ 8 · 7–10 km R$ 12 · acima de 10 km consultar';
+  if (note && !/vit[oó]ria\s*r\$/i.test(note) && !/r\$\s*\d/i.test(note)) return note;
+  return 'Retirada no local · Entrega por Uber/99 (solicitada pelo cliente)';
 }
 
 function formatDeliveryFeeText() {
@@ -856,14 +849,12 @@ function cartDiscount() {
 }
 
 function cartPayable() {
-  const delivery = resolveDeliveryForCart();
-  const fee = getFulfillment() === 'entrega' && delivery.known ? delivery.fee : 0;
   if (Cart) {
     const sub = Cart.subtotal();
     const disc = Cart.discount();
-    return Math.max(0, sub - disc + fee);
+    return Math.max(0, sub - disc);
   }
-  return Math.max(0, cartTotal() - cartDiscount() + fee);
+  return Math.max(0, cartTotal() - cartDiscount());
 }
 
 function resolveLiveCoupon(coupon) {
@@ -1135,12 +1126,7 @@ function buildCartWhatsAppMessage({ fullName, phone, items, fulfillment, loyalty
   const subtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
   const coupon = appliedCoupon ? resolveLiveCoupon(appliedCoupon) : null;
   const discount = coupon ? Storage.calcCouponDiscount(coupon, subtotal) : 0;
-  const pickup = isPickupFulfillment(address);
-  const delivery = deliveryOverride?.known
-    ? deliveryOverride
-    : (resolveDeliveryFromAddress(address).known ? resolveDeliveryFromAddress(address) : resolveDeliveryForCart());
-  const fee = pickup ? 0 : (delivery.known ? delivery.fee : getDeliveryFee());
-  const total = Math.max(0, subtotal - discount + fee);
+  const total = Math.max(0, subtotal - discount);
   const pay = payment || (Cart?.getPayment?.() || 'pix');
   const payLabel = Cart?.paymentLabel?.(pay)
     || (pay === 'dinheiro' ? 'Dinheiro' : pay === 'cartao' ? 'Link para cartão de crédito (repasse da taxa)' : 'Pix');
@@ -1186,7 +1172,6 @@ function buildCartWhatsAppMessage({ fullName, phone, items, fulfillment, loyalty
     `*Valor*\n` +
     `Produtos: ${formatMoneyPlain(subtotal)}\n` +
     (couponBlock ? couponBlock : '') +
-    `Taxa de entrega: ${formatMoneyPlain(fee)}\n` +
     `Total: ${formatMoneyPlain(total)}\n\n` +
     `*Forma de pagamento*\n` +
     `${payLabel}${payExtra}\n\n` +
@@ -2748,7 +2733,6 @@ function renderCartUI() {
 
   const discount = cartDiscount();
   const payable = cartPayable();
-  const delivery = resolveDeliveryForCart();
 
   if (countEl) {
     countEl.textContent = String(count);
@@ -2778,16 +2762,12 @@ function renderCartUI() {
   }
 
   const showDiscount = lines > 0 && discount > 0;
-  const showDelivery = lines > 0 && delivery.known && delivery.fee > 0;
   const deliveryCityEl = document.getElementById('cart-delivery-city');
   const deliveryFeeEl = document.getElementById('cart-delivery-fee');
-  if (deliveryRow) deliveryRow.hidden = !showDelivery;
-  if (deliveryCityEl) {
-    deliveryCityEl.textContent = delivery.feeLabel
-      ? `(${delivery.feeLabel})`
-      : (delivery.label ? `(${delivery.label})` : '');
-  }
-  if (deliveryFeeEl && showDelivery) deliveryFeeEl.textContent = Storage.formatCurrency(delivery.fee);
+  if (deliveryRow) deliveryRow.hidden = true;
+  if (deliveryCityEl) deliveryCityEl.textContent = '';
+  if (deliveryFeeEl) deliveryFeeEl.textContent = '';
+  const showDelivery = false;
   if (totalRow) totalRow.hidden = !(showDiscount || showDelivery);
   if (discountRow) {
     discountRow.hidden = !showDiscount;
@@ -3178,7 +3158,7 @@ async function checkoutCart() {
 
   const notesParts = [
     isPickup ? 'Retirada no estabelecimento' : 'Entrega',
-    !isPickup && delivery.label ? `Cidade: ${delivery.label} — Frete ${Storage.formatCurrency(delivery.fee)}` : '',
+    !isPickup && delivery.label ? `Cidade: ${delivery.label}` : '',
     !isPickup && address ? `Endereço: ${address}` : '',
     !isPickup ? distNote : '',
     !isPickup ? radiusFlag : '',
@@ -3216,7 +3196,7 @@ async function checkoutCart() {
       image: item.image || '',
     })),
     total: payable,
-    deliveryFee: delivery.fee,
+    deliveryFee: 0,
     discount,
     notes: notesParts.filter(Boolean).join(' | '),
   }).catch(() => ({ ok: false, error: 'Falha ao gravar' }));

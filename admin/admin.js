@@ -948,8 +948,7 @@ function orderItemsSubtotal(items) {
 }
 
 function getDefaultDeliveryFee() {
-  const n = Number(Storage.getSettings()?.deliveryFee);
-  return Number.isFinite(n) && n >= 0 ? n : 5;
+  return 0;
 }
 
 function extractAddressFromOrderNotes(notes) {
@@ -1014,17 +1013,8 @@ function resolveOrderExtras(order) {
   const notes = String(order.notes || '');
   const hasSavedFee = order.deliveryFee != null && Number(order.deliveryFee) > 0;
 
-  if (!waiveDelivery && !hasSavedFee && deliveryFee <= 0) {
-    const diff = Number(order.total) - subtotal + discount;
-    if (diff > 0.001) deliveryFee = diff;
-  }
-  if (!waiveDelivery && deliveryFee <= 0) {
-    const zone = resolveDeliveryFeeForOrder(order);
-    if (zone.known && zone.fee > 0) deliveryFee = zone.fee;
-  }
-  if (!waiveDelivery && deliveryFee <= 0 && /entrega/i.test(notes)) {
-    deliveryFee = getDefaultDeliveryFee();
-  }
+  // Poc Poc: sem taxa de frete (Uber/99 pelo cliente)
+  deliveryFee = 0;
 
   return { subtotal, deliveryFee, discount, waiveDelivery };
 }
@@ -4150,7 +4140,7 @@ function initSettings() {
     hoursInput.addEventListener('input', () => { hoursInput.dataset.manual = '1'; });
   }
   document.getElementById('set-delivery-fee').value =
-    s.deliveryFee != null && s.deliveryFee !== '' ? Number(s.deliveryFee) : 5;
+    s.deliveryFee != null && s.deliveryFee !== '' ? Number(s.deliveryFee) : 0;
   const radiusEl = document.getElementById('set-delivery-radius');
   if (radiusEl) {
     radiusEl.value = s.deliveryRadiusKm != null && s.deliveryRadiusKm !== ''
@@ -4158,7 +4148,7 @@ function initSettings() {
       : 10;
   }
   document.getElementById('set-delivery-note').value =
-    s.deliveryNote || 'Até 3 km R$ 5 · 3–5 km R$ 7 · 5–7 km R$ 8 · 7–10 km R$ 12 · acima de 10 km consultar';
+    s.deliveryNote || 'Retirada no local · Entrega por Uber/99 (solicitada pelo cliente)';
   const ifoodEl = document.getElementById('set-ifood-url');
   if (ifoodEl) ifoodEl.value = s.ifoodUrl || brandDefaultsEarly.ifoodUrl || '';
   document.getElementById('set-sobre1').value = s.sobreText1 || '';
@@ -4210,7 +4200,7 @@ function initSettings() {
     e.preventDefault();
     const feeRaw = String(document.getElementById('set-delivery-fee').value || '').replace(',', '.');
     let deliveryFee = Number(feeRaw);
-    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) deliveryFee = 5;
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) deliveryFee = 0;
     const radiusRaw = String(document.getElementById('set-delivery-radius')?.value || '').replace(',', '.');
     let deliveryRadiusKm = Number(radiusRaw);
     if (!Number.isFinite(deliveryRadiusKm) || deliveryRadiusKm < 1) deliveryRadiusKm = 10;
@@ -4240,7 +4230,7 @@ function initSettings() {
       deliveryRadiusKm,
       storeLat: Number(Storage.getSettings()?.storeLat) || -20.3539,
       storeLng: Number(Storage.getSettings()?.storeLng) || -40.3558,
-      deliveryNote: document.getElementById('set-delivery-note').value.trim() || 'Até 3 km R$ 5 · 3–5 km R$ 7 · 5–7 km R$ 8 · 7–10 km R$ 12 · acima de 10 km consultar',
+      deliveryNote: document.getElementById('set-delivery-note').value.trim() || 'Retirada no local · Entrega por Uber/99 (solicitada pelo cliente)',
       ifoodUrl: document.getElementById('set-ifood-url')?.value.trim() || '',
       sobreText1: document.getElementById('set-sobre1').value.trim(),
       sobreText2: document.getElementById('set-sobre2').value.trim(),
