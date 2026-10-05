@@ -3,9 +3,9 @@
  */
 const Storage = (() => {
   const KEY = 'pocpoc_gourmet_data';
-  const PUBLIC_CACHE_KEY = 'pocpoc_public_catalog_v8';
+  const PUBLIC_CACHE_KEY = 'pocpoc_public_catalog_v9';
   const API_DOWN_KEY = 'pocpoc_api_down_until';
-  const DATA_VERSION = 20;
+  const DATA_VERSION = 21;
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(location.hostname || '');
 
   const API = (() => {

@@ -1453,11 +1453,10 @@ function applySettings() {
   syncFulfillmentUI();
   const heroBg = document.getElementById('hero-bg');
   const bannerPath = String(s.banner || 'products/banner-hero.jpg').trim();
-  if (heroBg && bannerPath && !/hero\.jpg$/i.test(bannerPath) && !/flyer|pedido|whatsapp.?image/i.test(bannerPath)) {
-    heroBg.style.backgroundImage = `url('${imgSrc(bannerPath)}')`;
-    heroBg.classList.add('has-banner');
-  } else if (heroBg) {
-    heroBg.style.backgroundImage = `url('${imgSrc('products/banner-hero.jpg')}')`;
+  const useBanner = bannerPath && !/hero\.jpg$/i.test(bannerPath) && !/flyer|pedido|whatsapp.?image/i.test(bannerPath);
+  const bannerSrc = imgSrc(useBanner ? bannerPath : 'products/banner-hero.jpg');
+  if (heroBg) {
+    heroBg.style.backgroundImage = `url('${bannerSrc}${bannerSrc.includes('?') ? '&' : '?'}v=hero2')`;
     heroBg.classList.add('has-banner');
   }
 
@@ -3635,7 +3634,7 @@ function initHeader() {
   const nav = document.getElementById('nav-menu');
 
   const onScroll = () => {
-    header.classList.toggle('header--scrolled', window.scrollY > 24);
+    header.classList.toggle('header--scrolled', window.scrollY > 80);
   };
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
