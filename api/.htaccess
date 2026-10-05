@@ -1,0 +1,13 @@
+# Protege arquivos sensíveis
+<FilesMatch "^(config\.php|bootstrap\.php|seed-data\.json|schema\.sql)$">
+  Require all denied
+</FilesMatch>
+
+# Fallback Apache antigo
+<IfModule !mod_authz_core.c>
+  <FilesMatch "^(config\.php|bootstrap\.php|seed-data\.json|schema\.sql)$">
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+Options -Indexes

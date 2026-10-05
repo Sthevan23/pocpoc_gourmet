@@ -1,0 +1,6 @@
+Options -Indexes
+
+# Serve imagens normalmente; bloqueia PHP na pasta de upload
+<FilesMatch "\.php$">
+  Require all denied
+</FilesMatch>
