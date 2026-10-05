@@ -190,31 +190,6 @@
     <section class="admin-page" id="page-pedidos">
       <p class="fin-note"><i class="fas fa-edit"></i> Clique no pedido para ver detalhes ou use <strong>Editar</strong> para mudar itens, quantidade, preço, taxa de motoboy, desconto, cliente e status.</p>
 
-      <div class="card printer-card" id="printer-card">
-        <div class="card__header">
-          <h3><i class="fas fa-print"></i> Impressora da loja (POS 58mm)</h3>
-          <span class="card__subtitle" id="printer-status-label">Aguardando conexão</span>
-        </div>
-        <ol class="printer-steps">
-          <li>Ligue a POS e deixe o cabo USB plugado. No Windows ela deve aparecer como <strong>POS58</strong>.</li>
-          <li>Toque <strong>Imprimir (POS58)</strong>. Vai abrir a janela do Windows — escolha <strong>POS58</strong> e Imprimir.</li>
-          <li>Não use “porta serial”: essa impressora <strong>não aparece</strong> nessa lista do Chrome (é normal).</li>
-          <li>No celular: Bluetooth + app <a href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter" target="_blank" rel="noopener">RawBT</a>.</li>
-        </ol>
-        <div class="printer-card__actions">
-          <button type="button" class="btn btn--primary" id="btn-printer-windows"><i class="fas fa-print"></i> Imprimir (POS58)</button>
-          <button type="button" class="btn btn--secondary" id="btn-printer-test"><i class="fas fa-receipt"></i> Teste de impressão</button>
-          <button type="button" class="btn btn--secondary" id="btn-printer-connect"><i class="fas fa-bluetooth"></i> Bluetooth</button>
-          <button type="button" class="btn btn--secondary" id="btn-printer-rawbt"><i class="fas fa-mobile-screen"></i> Imprimir no Android</button>
-          <button type="button" class="btn btn--secondary" id="btn-printer-disconnect" hidden><i class="fas fa-unlink"></i> Desconectar</button>
-          <label class="checkbox-label printer-card__auto">
-            <input type="checkbox" id="printer-auto-print" checked>
-            Imprimir automaticamente pedidos novos (POS58 / Windows)
-          </label>
-          <p class="printer-auto-hint" id="printer-auto-hint">Deixe a <strong>POS58</strong> como impressora padrão do Windows. Mantenha o painel de Pedidos aberto.</p>
-        </div>
-      </div>
-
       <div class="page-actions">
         <button class="btn btn--secondary" type="button" id="btn-refresh-orders"><i class="fas fa-sync"></i> Atualizar pedidos</button>
         <button class="btn btn--primary" id="btn-new-order"><i class="fas fa-plus"></i> Novo Pedido</button>
@@ -775,8 +750,7 @@
   <script src="../js/product-photos.js?v=5"></script>
   <script src="../js/storage.js?v=34"></script>
   <script src="../js/delivery-zones.js?v=12"></script>
-  <script src="bluetooth-print.js?v=8"></script>
-  <script src="admin.js?v=27"></script>
+  <script src="admin.js?v=28"></script>
 </body>
 </html>
 

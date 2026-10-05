@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initModals();
   initOrderFilters();
   initButtons();
-  initPrinter();
 
   window.addEventListener('storage-updated', () => {
     renderAllAdminPages();
@@ -239,7 +238,6 @@ async function refreshOrdersFromCloud({ quiet = false } = {}) {
       if (ok) showToast('Pedidos atualizados da nuvem.', 'success');
       else showToast('Não deu para buscar na nuvem. Tente de novo.', 'error');
     }
-    await maybeAutoPrintNewOrders();
   } catch {
     if (!quiet) showToast('Falha ao atualizar pedidos.', 'error');
   } finally {
@@ -248,233 +246,6 @@ async function refreshOrdersFromCloud({ quiet = false } = {}) {
       btn.innerHTML = '<i class="fas fa-sync"></i> Atualizar pedidos';
     }
   }
-}
-
-function printerStoreName() {
-  return Storage.getSettings()?.name || 'Pipocando VV';
-}
-
-async function maybeAutoPrintNewOrders() {
-  if (!window.AuroraPrint) return;
-  try {
-    AuroraPrint.seedPrintedFromOrders(Storage.getOrders());
-    const result = await AuroraPrint.printNewOrders(Storage.getOrders(), {
-      storeName: printerStoreName(),
-    });
-    if (result?.printed > 0) {
-      showToast(
-        result.printed === 1
-          ? (result.viaWindows
-            ? 'Pedido novo — confirme a impressão na POS58 (se a janela abrir).'
-            : 'Pedido novo impresso!')
-          : `${result.printed} pedidos novos enviados para impressão!`,
-        'success',
-      );
-    }
-  } catch (err) {
-    console.warn('[Pipocando] Auto-print', err);
-  }
-}
-
-async function printOrderTicket(orderId) {
-  if (!window.AuroraPrint) {
-    showToast('Módulo de impressão não carregou. Atualize a página.', 'error');
-    return;
-  }
-  const order = Storage.getOrders().find((o) => o.id === orderId);
-  if (!order) {
-    showToast('Pedido não encontrado.', 'error');
-    return;
-  }
-  try {
-    if (AuroraPrint.isConnected()) {
-      await AuroraPrint.printOrder(order, { storeName: printerStoreName(), allowWindowsFallback: false });
-      showToast('Pedido enviado para a impressora!', 'success');
-      return;
-    }
-    // Sem serial/BT: caminho que funciona com POS USB no Windows
-    AuroraPrint.printViaWindows(order, { storeName: printerStoreName() });
-    showToast('Escolha a impressora POS58 na janela e imprima.', 'success');
-  } catch (err) {
-    try {
-      AuroraPrint.printViaWindows(order, { storeName: printerStoreName() });
-      showToast('Escolha a impressora POS58 na janela e imprima.', 'success');
-    } catch (err2) {
-      showToast(err2?.message || err?.message || 'Falha ao imprimir.', 'error');
-    }
-  }
-}
-
-function updatePrinterUi(info) {
-  const label = document.getElementById('printer-status-label');
-  const btnConnect = document.getElementById('btn-printer-connect');
-  const btnDisconnect = document.getElementById('btn-printer-disconnect');
-  const btnTest = document.getElementById('btn-printer-test');
-  const auto = document.getElementById('printer-auto-print');
-  if (!info && window.AuroraPrint) info = AuroraPrint.notifyStatus();
-  if (!info) return;
-  if (label) {
-    label.textContent = info.label;
-    label.classList.toggle('is-connected', !!info.connected);
-  }
-  if (btnConnect) btnConnect.hidden = !!info.connected;
-  if (btnDisconnect) btnDisconnect.hidden = !info.connected;
-  if (btnTest) btnTest.hidden = false;
-  if (auto) auto.checked = info.auto !== false;
-}
-
-function initPrinter() {
-  if (!window.AuroraPrint) return;
-
-  AuroraPrint.seedPrintedFromOrders(Storage.getOrders());
-  AuroraPrint.onStatus(updatePrinterUi);
-  updatePrinterUi(AuroraPrint.notifyStatus());
-
-  document.getElementById('btn-printer-connect')?.addEventListener('click', async () => {
-    try {
-      await AuroraPrint.connect();
-      updatePrinterUi(AuroraPrint.notifyStatus());
-      showToast('Impressora conectada!', 'success');
-      await maybeAutoPrintNewOrders();
-    } catch (err) {
-      if (err?.name === 'NotFoundError') {
-        showToast('Nenhuma impressora selecionada.', 'error');
-        return;
-      }
-      showToast(
-        AuroraPrint.friendlyConnectError?.(err) || err?.message || 'Não conectou. Use Chrome no celular ou USB no PC.',
-        'error',
-      );
-    }
-  });
-
-  document.getElementById('btn-printer-usb')?.addEventListener('click', () => {
-    // POS58 não é porta serial — sempre Windows
-    document.getElementById('btn-printer-windows')?.click();
-  });
-
-  document.getElementById('btn-printer-windows')?.addEventListener('click', () => {
-    try {
-      AuroraPrint.printViaWindows({
-        id: 'test-win-' + Date.now(),
-        number: 'TESTE',
-        date: new Date().toISOString(),
-        clientName: 'Teste Pipocando',
-        clientWhatsapp: '',
-        items: [{ name: 'Impressao OK — escolha POS58', qty: 1, price: 0 }],
-        total: 0,
-        notes: 'Teste POS58',
-        status: 'novo',
-      }, { storeName: printerStoreName() });
-      showToast('Impressora POS58 · desligue cabeçalho/rodapé na janela e imprima.', 'success');
-    } catch (err) {
-      showToast(err?.message || 'Não abriu a impressão. Permita pop-up no Chrome.', 'error');
-    }
-  });
-
-  document.getElementById('btn-printer-rawbt')?.addEventListener('click', () => {
-    try {
-      AuroraPrint.printViaRawBt({
-        id: 'test-' + Date.now(),
-        number: 'TESTE',
-        date: new Date().toISOString(),
-        clientName: 'Teste Pipocando',
-        clientWhatsapp: '',
-        items: [{ name: 'Impressao OK', qty: 1, price: 0 }],
-        total: 0,
-        notes: 'RawBT Android',
-        status: 'novo',
-      }, { storeName: printerStoreName() });
-      showToast('Se o app não abrir, instale o RawBT e emparelhe a impressora em Configurações → Bluetooth (não em Impressoras).', 'success');
-    } catch (err) {
-      showToast(err?.message || 'Não abriu o RawBT.', 'error');
-    }
-  });
-
-  document.getElementById('btn-printer-disconnect')?.addEventListener('click', () => {
-    AuroraPrint.disconnect();
-    updatePrinterUi(AuroraPrint.notifyStatus());
-    showToast('Impressora desconectada.', 'success');
-  });
-
-  document.getElementById('btn-printer-test')?.addEventListener('click', async () => {
-    try {
-      if (AuroraPrint.isConnected()) {
-        await AuroraPrint.printOrder({
-          id: 'test-' + Date.now(),
-          number: 'TESTE',
-          date: new Date().toISOString(),
-          clientName: 'Teste Pipocando',
-          clientWhatsapp: '',
-          items: [{ name: 'Impressao OK', qty: 1, price: 0 }],
-          total: 0,
-          notes: 'Impressora conectada',
-          status: 'novo',
-        }, { storeName: printerStoreName(), allowWindowsFallback: false });
-        showToast('Teste enviado!', 'success');
-        return;
-      }
-      AuroraPrint.printViaWindows({
-        id: 'test-' + Date.now(),
-        number: 'TESTE',
-        date: new Date().toISOString(),
-        clientName: 'Teste Pipocando',
-        clientWhatsapp: '',
-        items: [{ name: 'Impressao OK', qty: 1, price: 0 }],
-        total: 0,
-        notes: 'Teste POS58',
-        status: 'novo',
-      }, { storeName: printerStoreName() });
-      showToast('Na janela, escolha POS58 e imprima.', 'success');
-    } catch (err) {
-      showToast(err?.message || 'Falha no teste de impressão.', 'error');
-    }
-  });
-
-  document.getElementById('printer-auto-print')?.addEventListener('change', (e) => {
-    AuroraPrint.setAutoPrint(!!e.target.checked);
-    updatePrinterUi(AuroraPrint.notifyStatus());
-    showToast(
-      e.target.checked
-        ? 'Automático ligado. Deixe POS58 como padrão e o painel Pedidos aberto.'
-        : 'Impressão automática desligada.',
-      'success',
-    );
-    if (e.target.checked) maybeAutoPrintNewOrders();
-  });
-
-  AuroraPrint.tryReconnect?.().then((ok) => {
-    updatePrinterUi(AuroraPrint.notifyStatus());
-    maybeAutoPrintNewOrders();
-  });
-
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      AuroraPrint.tryReconnect?.().then(() => updatePrinterUi(AuroraPrint.notifyStatus()));
-      if (AuroraPrint.getAutoPrint()) maybeAutoPrintNewOrders();
-    }
-  });
-
-  setInterval(() => {
-    if (document.hidden) return;
-    if (AuroraPrint.isConnected()) return;
-    AuroraPrint.tryReconnect?.().then((ok) => {
-      if (ok) {
-        updatePrinterUi(AuroraPrint.notifyStatus());
-        maybeAutoPrintNewOrders();
-      }
-    });
-  }, 8000);
-
-  // Auto POS58: busca pedidos novos mesmo sem Bluetooth/serial
-  setInterval(() => {
-    if (document.hidden) return;
-    if (!AuroraPrint.getAutoPrint()) return;
-    const onPedidos = document.getElementById('page-pedidos')?.classList.contains('active');
-    const onDash = document.getElementById('page-dashboard')?.classList.contains('active');
-    if (!onPedidos && !onDash) return;
-    refreshOrdersFromCloud({ quiet: true });
-  }, 20000);
 }
 
 function initLogout() {
@@ -1610,9 +1381,6 @@ function viewOrder(id) {
         <button type="button" class="btn btn--primary" onclick="openEditOrder('${order.id}')">
           <i class="fas fa-edit"></i> Editar pedido
         </button>
-        <button type="button" class="btn btn--secondary" onclick="printOrderTicket('${order.id}')">
-          <i class="fas fa-print"></i> Imprimir
-        </button>
         <button type="button" class="btn btn--secondary" onclick="openEditOrderStatus('${order.id}')">
           <i class="fas fa-exchange-alt"></i> Alterar status
         </button>
@@ -2302,17 +2070,6 @@ function openNewOrderModal() {
       renderClients();
       renderDashboard();
       showToast('Pedido criado com sucesso!', 'success');
-      if (window.AuroraPrint && AuroraPrint.getAutoPrint()) {
-        try {
-          if (AuroraPrint.isConnected?.()) {
-            await AuroraPrint.printOrder(newOrder, { storeName: printerStoreName(), allowWindowsFallback: false });
-          } else {
-            await AuroraPrint.printViaWindows(newOrder, { storeName: printerStoreName(), silent: true });
-          }
-        } catch (err) {
-          console.warn('[Pipocando] Print novo pedido admin', err);
-        }
-      }
     } catch {
       showToast('Erro ao criar pedido.', 'error');
     } finally {
@@ -4371,7 +4128,6 @@ window.editOrder = editOrder;
 window.openEditOrder = openEditOrder;
 window.openEditOrderStatus = openEditOrderStatus;
 window.viewOrder = viewOrder;
-window.printOrderTicket = printOrderTicket;
 window.openGoalsHistory = openGoalsHistory;
 window.deleteOrder = deleteOrder;
 window.closeModal = closeModal;
