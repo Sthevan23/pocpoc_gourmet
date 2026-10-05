@@ -28,27 +28,25 @@ Envie **toda a pasta do projeto** para `public_html` (ou a pasta do domínio), i
 - `api/`
 - `js/`, `products/`, `css/`
 
-### 4. Configurar a API
-1. No servidor, edite `api/config.php` (já tem modelo)
-2. Preencha:
+### 4. Configurar a API (obrigatório para pedidos no painel)
+
+No File Manager da Hostinger, edite `api/config.php` e preencha o MySQL real:
 
 ```php
 'db_host' => 'localhost',
-'db_name' => 'uXXXX_pocpoc',
-'db_user' => 'uXXXX_pocpoc',
-'db_pass' => 'SUA_SENHA_DO_BANCO',
-'admin_email' => 'admin@pocpocgourmet.com.br',
-'admin_password' => 'pocpoc123',
+'db_name' => 'uXXXX_pocpoc',   // nome do banco no hPanel
+'db_user' => 'uXXXX_pocpoc',   // usuário do banco
+'db_pass' => 'SUA_SENHA',      // senha do banco
 ```
 
+Sem isso, o site abre, mas **pedidos NÃO aparecem no painel** (`api/ping.php` dá erro).
+
 ### 5. Rodar o install (uma vez)
-Abra no navegador:
+Abra:
 
-`https://SEU-DOMINIO/api/install.php`
+`https://pocpocgourmet.seuproximosite.com.br/api/install.php`
 
-Isso grava o catálogo inicial e o hash da senha.
-
-**Depois apague `api/install.php` do servidor.**
+Depois **apague** `api/install.php`.
 
 ### 6. Testar
 1. `https://SEU-DOMINIO/api/ping.php` → deve retornar `{"ok":true,...}`

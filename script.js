@@ -230,7 +230,7 @@ function getDeliveryBlockedMessage() {
   return (
     blocked?.message ||
     cartDistanceState?.message ||
-    'No momento não fazemos entrega nessa cidade ou bairro. Atendemos Vila Velha e Cariacica.'
+    'No momento não fazemos entrega nessa região. Atendemos Divinópolis (retirada ou Uber/99).'
   );
 }
 
@@ -472,7 +472,7 @@ function syncFulfillmentUI() {
       zoneStatus.textContent = `Informe o endereço completo para calcular a taxa por km.`;
       zoneStatus.hidden = false;
     } else if (hasItems) {
-      zoneStatus.textContent = `Toque na cidade (Vila Velha ou Cariacica) e informe o endereço.`;
+      zoneStatus.textContent = `Toque em Divinópolis ou Retirada para continuar.`;
       zoneStatus.hidden = false;
     } else {
       zoneStatus.hidden = true;
@@ -537,28 +537,6 @@ function syncCartCityFromAddress() {
   const resolved = resolveDeliveryFromAddress(address);
   if (!resolved.known) return;
   setCartCity(resolved.city);
-}
-
-function fulfillmentWhatsAppBlock(_mode, address = '') {
-  const addr = String(address || '').trim();
-  const delivery = resolveDeliveryForCart();
-  const dist = cartDistanceState?.inRange === true && cartDistanceState.km != null
-    ? `\nDistância: ≈ ${String(cartDistanceState.km).replace('.', ',')} km (raio ${getDeliveryRadiusKm()} km)`
-    : '';
-  if (delivery.known && delivery.fee > 0) {
-    const tier = delivery.feeLabel ? ` (${delivery.feeLabel})` : (delivery.label ? ` — ${delivery.label}` : '');
-    return (
-      `FORMA: Entrega\n` +
-      `Frete: ${Storage.formatCurrency(delivery.fee)}${tier}${dist}\n` +
-      `Endereço: ${addr}`
-    );
-  }
-  const zones = formatDeliveryZonesText();
-  return (
-    `FORMA: Entrega\n` +
-    `Taxas: ${zones}\n` +
-    (addr ? `Endereço: ${addr}` : '(Informar endereço e cidade no WhatsApp)')
-  );
 }
 
 function getDeliveryFee() {
@@ -713,7 +691,7 @@ async function lookupCartCep(rawCep) {
       syncComposedCartAddress();
       const msg =
         window.PipocandoDelivery?.detectBlocked?.(cityId, data.localidade)?.message ||
-        'No momento não fazemos entrega em Vitória. Atendemos Vila Velha e Cariacica.';
+        'No momento não fazemos entrega nessa região. Atendemos Divinópolis (retirada ou Uber/99).';
       if (hint) hint.textContent = msg;
       setCartDistanceUI({
         checked: true,
@@ -1103,34 +1081,52 @@ function parseWhatsAppFlavorLines(flavorText) {
   return splitWhatsAppOptionList(raw);
 }
 
+function formatMoneyPlain(value) {
+  return Number(value || 0).toFixed(2).replace('.', ',');
+}
+
+function isPickupFulfillment(address = '') {
+  const cityId = String(typeof getCartCityId === 'function' ? getCartCityId() : '').toLowerCase();
+  if (cityId === 'retirada') return true;
+  const delivery = typeof resolveDeliveryForCart === 'function' ? resolveDeliveryForCart() : null;
+  if (String(delivery?.city || '').toLowerCase() === 'retirada') return true;
+  return /\bretirada\b/i.test(String(address || ''));
+}
+
 function formatWhatsAppItemBlock(item) {
   const qty = Number(item.qty) || 1;
   const unit = Number(item.price) || 0;
   const sub = unit * qty;
-  const size = String(item.size || '').trim() || 'A combinar';
+  const size = String(item.size || '').trim();
+  const name = String(item.name || 'Item').trim().toUpperCase();
+  const title = size
+    ? `${qty}x ${name} - ${size.toUpperCase()} (${formatMoneyPlain(sub)})`
+    : `${qty}x ${name} (${formatMoneyPlain(sub)})`;
+
   const flavorLines = parseWhatsAppFlavorLines(item.flavor);
-  const notesBlock = item.notes ? `\n*Obs:*\n${item.notes}` : '';
+  const flavorBlock = flavorLines.length
+    ? flavorLines.map((f) => `     ↳  ${String(f).toUpperCase()}`).join('\n')
+    : '';
+  const notesBlock = item.notes ? `\n     Obs: ${item.notes}` : '';
 
-  let flavorsBlock = '';
-  if (flavorLines.length) {
-    flavorsBlock = `*Sabores:*\n${flavorLines.join('\n')}`;
-  } else {
-    const fallback = String(item.flavor || '').trim();
-    if (fallback && fallback !== 'Não se aplica') {
-      flavorsBlock = `*Sabores:*\n${fallback}`;
-    }
+  return flavorBlock
+    ? `${title}\n${flavorBlock}${notesBlock}`
+    : `${title}${notesBlock}`;
+}
+
+function fulfillmentWhatsAppBlock(_mode, address = '') {
+  if (isPickupFulfillment(address)) {
+    return 'Retirar no estabelecimento';
   }
-
-  return (
-    `*ITEM:* ${item.name}\n` +
-    `*Qtd:* ${qty}\n` +
-    `*Tamanho:*\n${size}\n` +
-    (flavorsBlock ? `${flavorsBlock}\n` : '') +
-    `*Valor unit.:* ${unit > 0 ? Storage.formatCurrency(unit) : 'Consultar'}\n` +
-    `*Subtotal:* ${sub > 0 ? Storage.formatCurrency(sub) : 'Consultar'}` +
-    `${notesBlock}\n` +
-    `--------------------------------`
-  );
+  const addr = String(address || '').trim();
+  const delivery = resolveDeliveryForCart();
+  const dist = cartDistanceState?.inRange === true && cartDistanceState.km != null
+    ? `\nDistância: ≈ ${String(cartDistanceState.km).replace('.', ',')} km`
+    : '';
+  if (addr) {
+    return `Entrega\n${addr}${dist}`;
+  }
+  return 'Entrega\n(Informar endereço no WhatsApp)';
 }
 
 function buildCartWhatsAppMessage({ fullName, phone, items, fulfillment, loyalty, address, payment, delivery: deliveryOverride, orderNumber }) {
@@ -1139,79 +1135,66 @@ function buildCartWhatsAppMessage({ fullName, phone, items, fulfillment, loyalty
   const subtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
   const coupon = appliedCoupon ? resolveLiveCoupon(appliedCoupon) : null;
   const discount = coupon ? Storage.calcCouponDiscount(coupon, subtotal) : 0;
+  const pickup = isPickupFulfillment(address);
   const delivery = deliveryOverride?.known
     ? deliveryOverride
     : (resolveDeliveryFromAddress(address).known ? resolveDeliveryFromAddress(address) : resolveDeliveryForCart());
-  const fee = delivery.known ? delivery.fee : getDeliveryFee();
+  const fee = pickup ? 0 : (delivery.known ? delivery.fee : getDeliveryFee());
   const total = Math.max(0, subtotal - discount + fee);
-  const mode = 'entrega';
   const pay = payment || (Cart?.getPayment?.() || 'pix');
   const payLabel = Cart?.paymentLabel?.(pay)
     || (pay === 'dinheiro' ? 'Dinheiro' : pay === 'cartao' ? 'Link para cartão de crédito (repasse da taxa)' : 'Pix');
-  let payNote = '';
-  if (pay === 'cartao') {
-    payNote = 'Obs.: taxa do cartão repassada ao cliente.\n';
-  } else if (pay === 'pix') {
-    const pix = Cart?.getPixInfo?.() || (() => {
-      const st = Storage.getSettings() || {};
-      const d = window.BRAND_DEFAULTS || {};
-      return {
-        key: st.pixKey || d.pixKey || '27999634430',
-        name: st.pixName || d.pixName || 'Beatriz Ferreira',
-        bank: st.pixBank || d.pixBank || 'Nubank',
-      };
-    })();
-    payNote =
-      `Nome: ${pix.name}\n` +
-      `Banco: ${pix.bank}\n` +
-      `Chave Pix: ${pix.key}\n`;
-  }
-  const lines = items.map((item) => formatWhatsAppItemBlock(item)).join('\n');
 
-  const couponBlock = coupon && discount > 0
-    ? (
-      `CUPOM: ${coupon.code}\n` +
-      `Desconto: − ${Storage.formatCurrency(discount)}\n` +
-      `Subtotal: ${Storage.formatCurrency(subtotal)}\n`
-    )
-    : '';
+  let payExtra = '';
+  if (pay === 'pix') {
+    const pix = Cart?.getPixInfo?.() || getPixSettings();
+    payExtra =
+      `\nNome: ${pix.name}` +
+      (pix.bank ? `\nBanco: ${pix.bank}` : '') +
+      `\nChave Pix: ${pix.key}`;
+  } else if (pay === 'cartao') {
+    payExtra = '\nObs.: taxa do cartão repassada ao cliente.';
+  }
+
+  const lines = items.map((item) => formatWhatsAppItemBlock(item)).join('\n\n');
+  const orderLine = orderNumber ? `Nº do pedido: ${orderNumber}\n\n` : '';
+
+  let couponBlock = '';
+  if (coupon && discount > 0) {
+    couponBlock =
+      `Cupom ${coupon.code}: − ${formatMoneyPlain(discount)}\n` +
+      `Subtotal: ${formatMoneyPlain(subtotal)}\n`;
+  }
 
   let loyaltyBlock = '';
   if (loyalty && loyalty.eligible) {
     const gift = loyalty.gift || '1 brinde surpresa da Poc Poc Gourmet';
     loyaltyBlock =
-      `FIDELIDADE PIPOCANDO\n` +
+      `\n*Fidelidade*\n` +
       `Cliente completou ${loyalty.total || loyalty.goal} pedidos e ganhou: ${gift}\n` +
-      `(Favor confirmar o brinde neste atendimento)\n` +
-      `--------------------------------\n`;
+      `(Confirmar o brinde neste atendimento)\n`;
   } else if (loyalty && loyalty.total > 0) {
     loyaltyBlock =
-      `Fidelidade: ${loyalty.progress}/${loyalty.goal} pedidos finalizados` +
-      (loyalty.remaining ? ` — faltam ${loyalty.remaining} para o brinde\n` : '\n') +
-      `--------------------------------\n`;
+      `\nFidelidade: ${loyalty.progress}/${loyalty.goal} pedidos` +
+      (loyalty.remaining ? ` — faltam ${loyalty.remaining} para o brinde\n` : '\n');
   }
 
-  const orderLine = orderNumber ? `Nº do pedido: ${orderNumber}\n` : '';
-
   return (
-    `PEDIDO RECEBIDO - ${storeName}\n` +
+    `*Pedido — ${storeName}*\n` +
     `${orderLine}` +
-    `\n` +
-    `CLIENTE:\n` +
-    `Nome: ${fullName}\n` +
-    `Telefone: ${formatPhoneBR(phone)}\n\n` +
-    `ITENS DO PEDIDO (${items.length}):\n\n` +
-    `${lines}\n` +
-    `${couponBlock}` +
-    `TOTAL A PAGAR: ${Storage.formatCurrency(total)}\n` +
-    `PAGAMENTO: ${payLabel}\n` +
-    `${payNote}` +
-    `--------------------------------\n` +
-    `${loyaltyBlock}` +
-    `${fulfillmentWhatsAppBlock(mode, address)}\n` +
-    `--------------------------------\n\n` +
-    `Aguardo confirmação de disponibilidade e pagamento.\n\n` +
-    `Obrigado!`
+    `${lines}\n\n` +
+    `*Valor*\n` +
+    `Produtos: ${formatMoneyPlain(subtotal)}\n` +
+    (couponBlock ? couponBlock : '') +
+    `Taxa de entrega: ${formatMoneyPlain(fee)}\n` +
+    `Total: ${formatMoneyPlain(total)}\n\n` +
+    `*Forma de pagamento*\n` +
+    `${payLabel}${payExtra}\n\n` +
+    `*Entrega*\n` +
+    `${fulfillmentWhatsAppBlock(fulfillment, address)}\n\n` +
+    `*Cliente*\n` +
+    `${fullName}  - ${formatPhoneBR(phone)}` +
+    `${loyaltyBlock}`
   );
 }
 
@@ -1375,7 +1358,7 @@ function applySettings() {
   document.getElementById('hero-place').textContent = placeShort;
   document.getElementById('footer-year').textContent = new Date().getFullYear();
 
-  const addressShort = address.replace(/,\s*ES.*/i, ', ES').trim() || 'Vila Velha, ES';
+  const addressShort = address.replace(/,\s*Brasil\s*$/i, '').trim() || 'Divinópolis, MG';
 
   const contactAddress = document.getElementById('contact-address');
   if (contactAddress) {
@@ -2957,7 +2940,7 @@ async function checkoutCart() {
   }
   const nome = document.getElementById('cart-nome')?.value.trim() || '';
   const sobrenome = document.getElementById('cart-sobrenome')?.value.trim() || '';
-  const address = syncComposedCartAddress();
+  let address = syncComposedCartAddress();
   const street = document.getElementById('cart-street')?.value.trim() || '';
   const number = document.getElementById('cart-number')?.value.trim() || '';
   const neighborhood = document.getElementById('cart-neighborhood')?.value.trim() || '';
@@ -3005,38 +2988,49 @@ async function checkoutCart() {
     document.getElementById('cart-cep')?.focus();
     return;
   }
-  if (!street) {
-    if (error) {
-      error.textContent = 'Informe a rua. Digite o CEP para buscar automaticamente.';
-      error.hidden = false;
+
+  const cityId = String(getCartCityId?.() || '').toLowerCase();
+  const isPickup = cityId === 'retirada';
+
+  if (!isPickup) {
+    if (!street) {
+      if (error) {
+        error.textContent = 'Informe a rua. Digite o CEP para buscar automaticamente.';
+        error.hidden = false;
+      }
+      document.getElementById('cart-street')?.focus();
+      return;
     }
-    document.getElementById('cart-street')?.focus();
-    return;
-  }
-  if (!number) {
-    if (error) {
-      error.textContent = 'Informe o número da casa/apto.';
-      error.hidden = false;
+    if (!number) {
+      if (error) {
+        error.textContent = 'Informe o número da casa/apto.';
+        error.hidden = false;
+      }
+      document.getElementById('cart-number')?.focus();
+      return;
     }
-    document.getElementById('cart-number')?.focus();
-    return;
-  }
-  if (!neighborhood) {
-    if (error) {
-      error.textContent = 'Informe o bairro.';
-      error.hidden = false;
+    if (!neighborhood) {
+      if (error) {
+        error.textContent = 'Informe o bairro.';
+        error.hidden = false;
+      }
+      document.getElementById('cart-neighborhood')?.focus();
+      return;
     }
-    document.getElementById('cart-neighborhood')?.focus();
-    return;
-  }
-  if (address.length < 8) {
-    if (error) {
-      error.textContent = 'Informe o endereço completo para entrega.';
-      error.hidden = false;
+    if (address.length < 8) {
+      if (error) {
+        error.textContent = 'Informe o endereço completo para entrega.';
+        error.hidden = false;
+      }
+      document.getElementById('cart-street')?.focus();
+      return;
     }
-    document.getElementById('cart-street')?.focus();
-    return;
+  } else {
+    // Retirada: garante cidade marcada no endereço composto
+    setCartCity('retirada');
+    address = syncComposedCartAddress();
   }
+
   const delivery = resolveDeliveryForCart();
   if (delivery.blocked || isDeliveryBlocked()) {
     if (error) {
@@ -3055,50 +3049,53 @@ async function checkoutCart() {
     document.getElementById('cart-zone-status')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
-  if (!delivery.known) {
+  if (!delivery.known && !isPickup) {
     if (error) {
-      error.textContent = 'Selecione a cidade ou informe Vila Velha ou Cariacica no endereço.';
+      error.textContent = 'Selecione Divinópolis ou Retirada para continuar.';
       error.hidden = false;
     }
     document.getElementById('cart-zones')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
 
-  // Distância: acima do raio bloqueia o checkout no site
-  if (!cartDistanceState || cartDistanceState.address !== address) {
-    if (btn) btn.disabled = true;
-    await verifyCartDeliveryDistance(address);
-    if (btn) btn.disabled = false;
-  }
-  const distState = cartDistanceState || {};
-
-  if (isDistanceOutsideRadius(distState)) {
-    if (error) {
-      error.textContent =
-        'Endereço fora da rota de entrega. Confirme no WhatsApp se conseguimos encaixar ou se enviamos pelo iFood.';
-      error.hidden = false;
+  // Distância: só valida em entrega (retirada pula)
+  let distState = cartDistanceState || {};
+  if (!isPickup) {
+    if (!cartDistanceState || cartDistanceState.address !== address) {
+      if (btn) btn.disabled = true;
+      await verifyCartDeliveryDistance(address);
+      if (btn) btn.disabled = false;
     }
-    setCartDistanceUI({ ...distState, address });
-    document.getElementById('cart-distance-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    return;
-  }
+    distState = cartDistanceState || {};
 
-  if (!delivery.known && distState.checked === false && !distState.pending) {
-    if (error) {
-      error.textContent = 'Selecione Vila Velha ou Cariacica para continuar.';
-      error.hidden = false;
+    if (isDistanceOutsideRadius(distState)) {
+      if (error) {
+        error.textContent =
+          'Endereço fora da rota de entrega. Confirme no WhatsApp se conseguimos encaixar.';
+        error.hidden = false;
+      }
+      setCartDistanceUI({ ...distState, address });
+      document.getElementById('cart-distance-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
     }
-    document.getElementById('cart-zones')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    return;
-  }
 
-  if (distState.blocked || isDeliveryBlocked(distState)) {
-    if (error) {
-      error.textContent = getDeliveryBlockedMessage();
-      error.hidden = false;
+    if (!delivery.known && distState.checked === false && !distState.pending) {
+      if (error) {
+        error.textContent = 'Selecione Divinópolis ou Retirada para continuar.';
+        error.hidden = false;
+      }
+      document.getElementById('cart-zones')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
     }
-    document.getElementById('cart-distance-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    return;
+
+    if (distState.blocked || isDeliveryBlocked(distState)) {
+      if (error) {
+        error.textContent = getDeliveryBlockedMessage();
+        error.hidden = false;
+      }
+      document.getElementById('cart-distance-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
   }
 
   const payment = Cart?.setPayment?.(
@@ -3139,11 +3136,11 @@ async function checkoutCart() {
     : '';
 
   const notesParts = [
-    'Entrega',
-    delivery.label ? `Cidade: ${delivery.label} — Frete ${Storage.formatCurrency(delivery.fee)}` : '',
-    address ? `Endereço: ${address}` : '',
-    distNote,
-    radiusFlag,
+    isPickup ? 'Retirada no estabelecimento' : 'Entrega',
+    !isPickup && delivery.label ? `Cidade: ${delivery.label} — Frete ${Storage.formatCurrency(delivery.fee)}` : '',
+    !isPickup && address ? `Endereço: ${address}` : '',
+    !isPickup ? distNote : '',
+    !isPickup ? radiusFlag : '',
     `Pagamento: ${Cart?.paymentWhatsAppLine?.(payment)?.replace(/\n/g, ' — ') || Cart?.paymentLabel?.(payment) || payment}`,
     itemsSnapshot.map((i) => {
       const flavorBit = i.flavor ? ` (${i.flavor})` : '';
@@ -3229,14 +3226,15 @@ function getOrderPhoneInput() {
 
 function getStoreWhatsAppDigits() {
   const s = Storage.getSettings?.() || {};
-  const raw = String(s.whatsapp || '5527999634430').trim();
+  const d = (typeof BRAND_DEFAULTS !== 'undefined' && BRAND_DEFAULTS) ? BRAND_DEFAULTS : {};
+  const raw = String(s.whatsapp || d.whatsapp || '5537991296906').trim();
   if (/^https?:\/\//i.test(raw)) {
     const match = raw.match(/(?:wa\.me|whatsapp\.com\/send\?phone=)\/?(\d+)/i)
       || raw.match(/phone=(\d+)/i);
     if (match) return match[1];
   }
   let digits = raw.replace(/\D/g, '');
-  if (!digits) digits = '5527999634430';
+  if (!digits) digits = '5537991296906';
   if (!digits.startsWith('55')) digits = `55${digits}`;
   return digits;
 }
@@ -3246,9 +3244,10 @@ function getStoreWhatsAppBase() {
 }
 
 function getStorePhoneDisplay() {
-  const s = Storage.getSettings();
-  const formatted = formatPhoneBR(s.whatsapp || '5527999634430');
-  return formatted || '(27) 99963-4430';
+  const s = Storage.getSettings() || {};
+  const defaults = (typeof BRAND_DEFAULTS !== 'undefined' && BRAND_DEFAULTS) ? BRAND_DEFAULTS : {};
+  const formatted = formatPhoneBR(s.whatsapp || defaults.whatsapp || '5537991296906');
+  return formatted || '(37) 99129-6906';
 }
 
 function isMobileBrowser() {
@@ -3700,9 +3699,9 @@ function getPixSettings() {
   const s = Storage.getSettings() || {};
   const d = window.BRAND_DEFAULTS || {};
   return {
-    key: String(s.pixKey || d.pixKey || '27999634430').trim(),
-    name: String(s.pixName || d.pixName || 'Beatriz Ferreira').trim(),
-    bank: String(s.pixBank || d.pixBank || 'Nubank').trim(),
+    key: String(s.pixKey || d.pixKey || '37988523738').trim(),
+    name: String(s.pixName || d.pixName || 'Jessica Elias Coelho Miranda').trim(),
+    bank: String(s.pixBank || d.pixBank || '').trim(),
   };
 }
 

@@ -1,13 +1,12 @@
-﻿# Hostinger / API
-api/config.php
-api/uploads/*
-!api/uploads/.gitkeep
-!api/uploads/.htaccess
-
-# OS / IDE
+﻿# OS / IDE
 .DS_Store
 Thumbs.db
 *.log
 node_modules/
 .vscode/
 .idea/
+
+# Uploads gerados no servidor
+api/uploads/*
+!api/uploads/.gitkeep
+!api/uploads/.htaccess

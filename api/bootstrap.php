@@ -6,8 +6,12 @@ function app_config(): array
   static $cfg = null;
   if ($cfg !== null) return $cfg;
   $path = __DIR__ . '/config.php';
+  $sample = __DIR__ . '/config.sample.php';
+  if (!is_file($path) && is_file($sample)) {
+    $path = $sample;
+  }
   if (!is_file($path)) {
-    json_error('Configure api/config.php (copie de config.sample.php)', 500);
+    json_error('Configure api/config.php (copie de config.sample.php e preencha o MySQL)', 500);
   }
   $cfg = require $path;
   return $cfg;

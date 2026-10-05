@@ -350,9 +350,9 @@ window.AuroraCart = (() => {
     const s = typeof Storage !== 'undefined' ? Storage.getSettings() : {};
     const d = (typeof BRAND_DEFAULTS !== 'undefined' && BRAND_DEFAULTS) ? BRAND_DEFAULTS : {};
     return {
-      key: String(s.pixKey || d.pixKey || '27999634430').trim(),
-      name: String(s.pixName || d.pixName || 'Beatriz Ferreira').trim(),
-      bank: String(s.pixBank || d.pixBank || 'Nubank').trim(),
+      key: String(s.pixKey || d.pixKey || '37988523738').trim(),
+      name: String(s.pixName || d.pixName || 'Jessica Elias Coelho Miranda').trim(),
+      bank: String(s.pixBank || d.pixBank || '').trim(),
     };
   }
 
