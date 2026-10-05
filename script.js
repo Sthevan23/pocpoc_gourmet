@@ -1340,8 +1340,6 @@ function applyBrand() {
 function applyStoreStatus() {
   if (typeof Storage === 'undefined' || !Storage.isStoreOpen) return;
   const open = Storage.isStoreOpen();
-  const banner = document.getElementById('store-status-banner');
-  if (banner) banner.hidden = true;
   document.body?.classList.remove('store-banner-visible');
   document.body?.classList.toggle('store-is-closed', !open);
   const trustStatus = document.getElementById('hero-trust-status');
