@@ -100,15 +100,15 @@ const PIPOCANDO_DEFAULT_DATA = {
 
   categories: [
 
-    { id: 'cat-creme', name: 'Pipocas com Creme', slug: 'pipocas-com-creme' },
+    { id: 'cat-creme', name: 'Pipocas com Creme', slug: 'pipocas-com-creme', sortOrder: 1 },
 
-    { id: 'cat-sequinhas', name: 'Pipocas Sequinhas', slug: 'pipocas-sequinhas' },
+    { id: 'cat-sequinhas', name: 'Pipocas Sequinhas', slug: 'pipocas-sequinhas', sortOrder: 2 },
 
-    { id: 'cat-caramelizada', name: 'Pipoca Caramelizada', slug: 'pipoca-caramelizada' },
+    { id: 'cat-caramelizada', name: 'Pipoca Caramelizada', slug: 'pipoca-caramelizada', sortOrder: 3 },
 
-    { id: 'cat-kilo', name: 'Pipocas no Kilo', slug: 'pipocas-no-kilo' },
+    { id: 'cat-kilo', name: 'Pipocas no Kilo', slug: 'pipocas-no-kilo', sortOrder: 4 },
 
-    { id: 'cat-presente', name: 'Embalagem de Presente', slug: 'embalagem-de-presente' },
+    { id: 'cat-presente', name: 'Embalagem de Presente', slug: 'embalagem-de-presente', sortOrder: 5 },
 
   ],
 

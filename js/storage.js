@@ -3,7 +3,7 @@
  */
 const Storage = (() => {
   const KEY = 'pocpoc_gourmet_data';
-  const PUBLIC_CACHE_KEY = 'pocpoc_public_catalog_v7';
+  const PUBLIC_CACHE_KEY = 'pocpoc_public_catalog_v8';
   const API_DOWN_KEY = 'pocpoc_api_down_until';
   const DATA_VERSION = 20;
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(location.hostname || '');
@@ -1159,9 +1159,21 @@ const Storage = (() => {
   }
 
   function sortCategoriesList(categories) {
+    const preferred = {
+      'cat-creme': 1,
+      'cat-sequinhas': 2,
+      'cat-caramelizada': 3,
+      'cat-kilo': 4,
+      'cat-presente': 5,
+    };
     return (categories || []).slice().sort((a, b) => {
-      const diff = sortOrderValue(a) - sortOrderValue(b);
-      if (diff !== 0) return diff;
+      const ao = Number.isFinite(Number(a?.sortOrder))
+        ? Number(a.sortOrder)
+        : (preferred[a?.id] ?? 9999);
+      const bo = Number.isFinite(Number(b?.sortOrder))
+        ? Number(b.sortOrder)
+        : (preferred[b?.id] ?? 9999);
+      if (ao !== bo) return ao - bo;
       return String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
     });
   }
