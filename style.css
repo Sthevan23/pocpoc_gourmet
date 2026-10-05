@@ -715,6 +715,20 @@ p {
   align-items: center;
 }
 
+.hero__actions .btn--ghost {
+  background: rgba(255, 250, 248, 0.14);
+  color: #fffaf8;
+  border-color: rgba(255, 250, 248, 0.55);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.hero__actions .btn--ghost:hover {
+  background: rgba(255, 250, 248, 0.26);
+  border-color: #fffaf8;
+  color: #fff;
+}
+
 @keyframes hero-slide-in {
   from {
     opacity: 0;
